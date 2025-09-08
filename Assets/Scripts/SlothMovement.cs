@@ -27,6 +27,10 @@ public class SlothMovement : MonoBehaviour
     CharacterController cc;
     float yVelocity;
 
+    [Header("Liana")]
+    public float velocityUp = 2f;
+    private bool insideTrigger = false;
+
     void OnEnable(){ EnhancedTouchSupport.Enable(); TouchSimulation.Enable(); }
     void OnDisable(){ TouchSimulation.Disable(); EnhancedTouchSupport.Disable(); }
 
@@ -48,6 +52,32 @@ public class SlothMovement : MonoBehaviour
         float deltaY = yVelocity * Time.deltaTime;
 
         cc.Move(new Vector3(deltaX, deltaY, 0f));
+
+        //Lianas
+        if (insideTrigger)
+        {
+            Vector3 movement = Vector3.up * velocityUp * Time.deltaTime;
+            cc.Move(movement);
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = true;
+            gravity = 0f;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = false;
+            gravity = -30f;
+            Debug.Log("salí");
+        }    
     }
 
     void HandleSwipe()
