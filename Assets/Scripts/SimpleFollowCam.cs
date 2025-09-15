@@ -4,35 +4,33 @@ using UnityEngine;
 
 public class SimpleFollowCam : MonoBehaviour
 {
-    [Header("Follow target")]
-    public Transform target;                 // Asigna tu Player aquí
+    public Transform target;          // Player
+    public float yOffset = 2f;        // cuánto encima del Player
+    public float smoothTime = 0.12f;  // suavizado vertical
 
-    [Header("Framing")]
-    public Vector3 offset = new Vector3(0f, 2f, -10f);
-    public float smoothTime = 0.15f;         // suavizado (0.1–0.3 suele ir bien)
-    Vector3 velocity = Vector3.zero;
+    float _yVel;                      // interno para SmoothDamp
+    float _fixedX, _fixedZ;           // X/Z fijas
+    Quaternion _fixedRotation;        // rotación fija (sin tilt)
 
-    [Header("Bloqueos de ejes (útil para centrar el tronco)")]
-    public bool lockXToZero = true;          // deja la X fija para que el tronco quede centrado
-    public bool lockZToOffset = true;        // mantiene el Z del offset (distancia fija)
+    void Awake()
+    {
+        // Guarda la posición y rotación iniciales para fijarlas
+        _fixedX = transform.position.x;
+        _fixedZ = transform.position.z;
+        _fixedRotation = transform.rotation;
+    }
 
     void LateUpdate()
     {
         if (!target) return;
 
-        // Posición objetivo básica
-        Vector3 wanted = target.position + offset;
+        // Solo ajusta Y con suavizado
+        float targetY = target.position.y + yOffset;
+        float newY = Mathf.SmoothDamp(transform.position.y, targetY, ref _yVel, smoothTime);
 
-        // Opcional: mantener el tronco centrado en X y la distancia Z estable
-        if (lockXToZero) wanted.x = offset.x;      // normalmente 0
-        if (lockZToOffset) wanted.z = target.position.z + offset.z;
-
-        // Suavizado con SmoothDamp (suele sentirse mejor que Lerp)
-        transform.position = Vector3.SmoothDamp(transform.position, wanted, ref velocity, smoothTime);
-
-        // Mantén un ligero look hacia arriba del jugador para encuadre
-        var lookPoint = target.position + Vector3.up * 1f;
-        transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.LookRotation(lookPoint - transform.position, Vector3.up), 0.25f);
+        // Mantén X/Z y la rotación inicial
+        transform.position = new Vector3(_fixedX, newY, _fixedZ);
+        transform.rotation = _fixedRotation;
     }
 }
 
