@@ -45,6 +45,12 @@ public class SlothMovement : MonoBehaviour
     CharacterController cc;
     float yVelocity;
 
+    [Header("Liana")]
+    public float velocityUp = 2f;
+    private bool insideTrigger = false;
+
+    void OnEnable(){ EnhancedTouchSupport.Enable(); TouchSimulation.Enable(); }
+    void OnDisable(){ TouchSimulation.Disable(); EnhancedTouchSupport.Disable(); }
     // ====== Ciclo de vida ======
     void OnEnable()
     {
@@ -90,9 +96,42 @@ public class SlothMovement : MonoBehaviour
         float newX = Mathf.MoveTowards(transform.position.x, targetX, laneChangeSpeed * Time.deltaTime);
         float deltaX = newX - transform.position.x;
 
+        // Gravedad y salto (sin auto-movimiento vertical)
+        if (cc.isGrounded && yVelocity < 0f) yVelocity = -2f;
+        yVelocity += gravity * Time.deltaTime;
+        yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
+        float deltaY = yVelocity * Time.deltaTime;
+
+        cc.Move(new Vector3(deltaX, deltaY, 0f));
+
+        //Lianas
+        if (insideTrigger)
+        {
+            Vector3 movement = Vector3.up * velocityUp * Time.deltaTime;
+            cc.Move(movement);
+        }
         // --- Aplicar movimiento (CharacterController.Move recibe DELTAS) ---
         Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
         cc.Move(motion);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = true;
+            gravity = 0f;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = false;
+            gravity = -30f;
+            Debug.Log("salí");
+        }    
     }
 
     // ====== Input / Gestos ======
