@@ -49,8 +49,8 @@ public class SlothMovement : MonoBehaviour
     public float velocityUp = 2f;
     private bool insideTrigger = false;
 
-    void OnEnable(){ EnhancedTouchSupport.Enable(); TouchSimulation.Enable(); }
-    void OnDisable(){ TouchSimulation.Disable(); EnhancedTouchSupport.Disable(); }
+    /*void OnEnable(){ EnhancedTouchSupport.Enable(); TouchSimulation.Enable(); }
+    void OnDisable(){ TouchSimulation.Disable(); EnhancedTouchSupport.Disable(); }*/
     // ====== Ciclo de vida ======
     void OnEnable()
     {
@@ -124,7 +124,7 @@ public class SlothMovement : MonoBehaviour
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    /*private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Liana"))
         {
@@ -132,7 +132,7 @@ public class SlothMovement : MonoBehaviour
             gravity = -30f;
             Debug.Log("salí");
         }    
-    }
+    }*/
 
     // ====== Input / Gestos ======
     void HandleSwipe()
