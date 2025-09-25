@@ -44,7 +44,6 @@ public class SlothMovement : MonoBehaviour
     // ====== Internos ======
     CharacterController cc;
     float yVelocity;
-    bool cambio = false;
 
     [Header("Liana")]
     public float velocityUp = 2f;
