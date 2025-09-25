@@ -44,6 +44,7 @@ public class SlothMovement : MonoBehaviour
     // ====== Internos ======
     CharacterController cc;
     float yVelocity;
+    bool cambio = false;
 
     [Header("Liana")]
     public float velocityUp = 2f;
@@ -111,8 +112,8 @@ public class SlothMovement : MonoBehaviour
             cc.Move(movement);
         }
         // --- Aplicar movimiento (CharacterController.Move recibe DELTAS) ---
-        Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
-        cc.Move(motion);
+        /*Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
+        cc.Move(motion);*/
     }
 
     private void OnTriggerEnter(Collider other)
@@ -124,7 +125,7 @@ public class SlothMovement : MonoBehaviour
         }
     }
 
-    /*private void OnTriggerExit(Collider other)
+    private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Liana"))
         {
@@ -132,7 +133,7 @@ public class SlothMovement : MonoBehaviour
             gravity = -30f;
             Debug.Log("salí");
         }    
-    }*/
+    }
 
     // ====== Input / Gestos ======
     void HandleSwipe()
