@@ -22,6 +22,7 @@ public class Pickup : MonoBehaviour
 
         // Ejecuta acciones (sonido, VFX, sumar puntos, etc.)
         onCollected?.Invoke();
+        Debug.Log(amount);
 
         // Elimina o desactiva el pickup
         if (destroyOnCollect)
