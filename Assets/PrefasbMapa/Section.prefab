@@ -645,6 +645,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9094103273557336974}
+  - component: {fileID: 8484175609508868777}
   m_Layer: 0
   m_Name: Elementos05
   m_TagString: Elementos
@@ -671,6 +672,19 @@ Transform:
   - {fileID: 1584673961862747997}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8484175609508868777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1840508481949512385}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 2
 --- !u!1 &2332350338409040415
 GameObject:
   m_ObjectHideFlags: 0
@@ -2016,9 +2030,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f034f1dc03acdb40940124e29c5386d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  elementos: []
   speed: 0.8
   sectionSize: 4
+  incrementoVelocidad: 0.3
+  tiempoPorIncremento: 10
+  allElementos: []
+  elementos: []
 --- !u!1 &4378925650020215706
 GameObject:
   m_ObjectHideFlags: 0
@@ -2135,6 +2152,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7263398480468637421}
+  - component: {fileID: 5968763439954825958}
   m_Layer: 0
   m_Name: Elementos06
   m_TagString: Elementos
@@ -2165,6 +2183,19 @@ Transform:
   - {fileID: 6317666373766866488}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5968763439954825958
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4933841484507708953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 1
 --- !u!1 &5505952350013857017
 GameObject:
   m_ObjectHideFlags: 0
@@ -2236,6 +2267,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2408195625484614021}
+  - component: {fileID: 1614893060038449353}
   m_Layer: 0
   m_Name: Elementos04
   m_TagString: Elementos
@@ -2262,6 +2294,19 @@ Transform:
   - {fileID: 4883590145155510144}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1614893060038449353
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5543909168281625217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 2
 --- !u!1 &5550529101993270895
 GameObject:
   m_ObjectHideFlags: 0
@@ -3046,6 +3091,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2102465763287907953}
+  - component: {fileID: 1930794442734814881}
   m_Layer: 0
   m_Name: Elementos02
   m_TagString: Elementos
@@ -3074,6 +3120,19 @@ Transform:
   - {fileID: 7351033720869751767}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1930794442734814881
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6058144904259581537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 0
 --- !u!1 &6177958460736742679
 GameObject:
   m_ObjectHideFlags: 0
@@ -3932,6 +3991,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8210660802755714700}
+  - component: {fileID: 964729579310361408}
   m_Layer: 0
   m_Name: Elementos01
   m_TagString: Elementos
@@ -3960,6 +4020,19 @@ Transform:
   - {fileID: 1581608658885646897}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &964729579310361408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7689889622794549921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 1
 --- !u!1 &7798726193784567003
 GameObject:
   m_ObjectHideFlags: 0
@@ -4183,6 +4256,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4634471135562659609}
+  - component: {fileID: 5368504486958297686}
   m_Layer: 0
   m_Name: Elementos03
   m_TagString: Elementos
@@ -4209,6 +4283,19 @@ Transform:
   - {fileID: 518239707840905478}
   m_Father: {fileID: 2291223437009215579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5368504486958297686
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8189705422924115890}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 169d7529100a3214e9ecbeae0693647c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dificultad: 1
 --- !u!1 &8436978570924032827
 GameObject:
   m_ObjectHideFlags: 0
