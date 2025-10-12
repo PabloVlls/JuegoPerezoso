@@ -1,14 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
-using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 [RequireComponent(typeof(CharacterController))]
-
 public class SlothMovement : MonoBehaviour
 {
-     // ====== Física ======
+    // ====== Física ======
     [Header("Física")]
     [SerializeField] float gravity = -30f;        // m/s² (negativa)
     [SerializeField] float jumpHeight = 2.6f;     // metros
@@ -18,7 +16,7 @@ public class SlothMovement : MonoBehaviour
     // ====== Carriles ======
     [Header("Carriles (−1, 0, +1)")]
     [SerializeField] float laneWidth = 1.6f;      // separación entre carriles
-    [SerializeField] float laneChangeSpeed = 10f; // m/s para deslizar lateral
+    [SerializeField] private float laneChangeSpeed = 10f; // m/s para deslizar lateral
     int lane = 0;                                  // -1, 0, +1
 
     // ====== Gestos ======
@@ -36,7 +34,7 @@ public class SlothMovement : MonoBehaviour
     [SerializeField] float coyoteTime = 0.12f;
     float lastGroundedTime;
     bool isGrounded;
-    
+
     float _lastProbeRadius;
     float _lastCastOriginY;
     float _lastHitDistance;
@@ -45,12 +43,10 @@ public class SlothMovement : MonoBehaviour
     CharacterController cc;
     float yVelocity;
 
-    [Header("Liana")]
-    public float velocityUp = 2f;
-    private bool insideTrigger = false;
+    // ====== Boost de carril (encapsulado) ======
+    float laneChangeSpeedBase;
+    Coroutine laneBoostCo;
 
-    /*void OnEnable(){ EnhancedTouchSupport.Enable(); TouchSimulation.Enable(); }
-    void OnDisable(){ TouchSimulation.Disable(); EnhancedTouchSupport.Disable(); }*/
     // ====== Ciclo de vida ======
     void OnEnable()
     {
@@ -70,6 +66,9 @@ public class SlothMovement : MonoBehaviour
         Application.targetFrameRate = 60;
         // Evita que ignore micro-movimientos (crítico para el snap)
         cc.minMoveDistance = 0f;
+
+        // Guardar valor base para restaurar tras boosts
+        laneChangeSpeedBase = laneChangeSpeed;
     }
 
     void Update()
@@ -88,6 +87,7 @@ public class SlothMovement : MonoBehaviour
         // --- Gravedad/salto/caída ---
         if (isGrounded && yVelocity < 0f)
             yVelocity = -2f; // mantener pegado al suelo sin acumular caída
+
         yVelocity += gravity * Time.deltaTime;
         yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
 
@@ -137,7 +137,7 @@ public class SlothMovement : MonoBehaviour
     // ====== Input / Gestos ======
     void HandleSwipe()
     {
-        foreach (var t in Touch.activeTouches)
+        foreach (var t in ETouch.activeTouches)
         {
             switch (t.phase)
             {
@@ -171,15 +171,18 @@ public class SlothMovement : MonoBehaviour
 
 #if UNITY_EDITOR
         // Controles de prueba en Editor
-        if (Input.GetKeyDown(KeyCode.A)) lane = Mathf.Clamp(lane - 1, -1, +1);
-        if (Input.GetKeyDown(KeyCode.D)) lane = Mathf.Clamp(lane + 1, -1, +1);
-        if (Input.GetKeyDown(KeyCode.Space)) TryJump();
-        if (Input.GetKeyDown(KeyCode.S)) QuickDrop();
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.aKey.wasPressedThisFrame) lane = Mathf.Clamp(lane - 1, -1, +1);
+            if (Keyboard.current.dKey.wasPressedThisFrame) lane = Mathf.Clamp(lane + 1, -1, +1);
+            if (Keyboard.current.spaceKey.wasPressedThisFrame) TryJump();
+            if (Keyboard.current.sKey.wasPressedThisFrame) QuickDrop();
+        }
 #endif
     }
 
     // ====== Suelo / Snap ======
-    
+
     // Calcula correctamente la posición de los “pies” del CharacterController
     Vector3 GetFeetWorld()
     {
@@ -239,7 +242,6 @@ public class SlothMovement : MonoBehaviour
             if (yVelocity < 0f) yVelocity = -2f; // pegado al piso
         }
     }
-    
 
     // ====== Acciones ======
     void TryJump()
@@ -254,6 +256,24 @@ public class SlothMovement : MonoBehaviour
         // Corta salto y acelera caída para enganchar la plataforma inferior
         if (yVelocity > 0f) yVelocity = 0f;
         yVelocity -= dropBoost;
+    }
+
+    // ====== Boost de cambio de carril (API pública) ======
+    /// <summary>
+    /// Aplica un boost temporal al cambio de carril (factor > 1 acelera).
+    /// </summary>
+    public void ApplyLaneBoost(float factor, float duration)
+    {
+        if (laneBoostCo != null) StopCoroutine(laneBoostCo);
+        laneBoostCo = StartCoroutine(LaneBoostRoutine(factor, duration));
+    }
+
+    private System.Collections.IEnumerator LaneBoostRoutine(float factor, float duration)
+    {
+        laneChangeSpeed = laneChangeSpeedBase * Mathf.Max(0.01f, factor);
+        yield return new WaitForSeconds(duration);
+        laneChangeSpeed = laneChangeSpeedBase;
+        laneBoostCo = null;
     }
 
     // ====== Debug opcional ======
