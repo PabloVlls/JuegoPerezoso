@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
 public class SlothMovement : MonoBehaviour
@@ -42,6 +43,13 @@ public class SlothMovement : MonoBehaviour
     // ====== Internos ======
     CharacterController cc;
     float yVelocity;
+
+    [Header("Liana")]
+    public float velocityUp = 2f;
+    private bool insideTrigger = false;
+
+    [Header("Vida")]
+    public int vidaMax = 3;
 
     // ====== Boost de carril (encapsulado) ======
     float laneChangeSpeedBase;
@@ -110,28 +118,55 @@ public class SlothMovement : MonoBehaviour
             Vector3 movement = Vector3.up * velocityUp * Time.deltaTime;
             cc.Move(movement);
         }
+
+        //Muerte personaje
+        if (vidaMax == 0)
+        {
+            Destroy(this.gameObject);
+            Time.timeScale = 0f;
+        }
+
         // --- Aplicar movimiento (CharacterController.Move recibe DELTAS) ---
         /*Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
         cc.Move(motion);*/
     }
 
+    //------ Vida del jugador / Lianas ------
+
     private void OnTriggerEnter(Collider other)
     {
+        //Interacción con lianas
         if (other.CompareTag("Liana"))
         {
             insideTrigger = true;
             gravity = 0f;
         }
+
+        //Interacción con semillas malas
+        if (other.CompareTag("Muerte"))
+        {
+            vidaMax --;
+            Destroy(other.gameObject);
+            StartCoroutine(Ralentizar());
+        }
     }
 
     private void OnTriggerExit(Collider other)
     {
+        //Interacción con lianas
         if (other.CompareTag("Liana"))
         {
             insideTrigger = false;
             gravity = -30f;
             Debug.Log("salí");
         }    
+    }
+
+    IEnumerator Ralentizar()
+    {
+        laneChangeSpeed = laneChangeSpeed / 3f;
+        yield return new WaitForSeconds(5f);
+        laneChangeSpeed = laneChangeSpeed * 3f;
     }
 
     // ====== Input / Gestos ======

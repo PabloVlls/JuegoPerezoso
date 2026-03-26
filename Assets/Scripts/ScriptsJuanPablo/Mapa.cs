@@ -24,6 +24,18 @@ public class Mapa : MonoBehaviour
     // Guardamos la última elección por referencia, no por índice
     private static GameObject lastSelectedElement = null;
 
+    [Header("Spawn Cafés")]
+
+    public GameObject cafeBuenoPrefab;
+    public GameObject cafeMaloPrefab;
+
+    [Range(0, 100)] public float probabilidadSpawn = 100f;
+    [Range(0, 100)] public float probabilidadMalo = 30f;
+
+    [Header("Spawn Objeto Especial")]
+    public GameObject objetoEspecialPrefab; 
+    [Range(0, 100)] public float probabilidadSpawnEspecial = 20f; // Suele ser menor que los cafés
+
     void Start()
     {
         sectionsCount = GameObject.FindGameObjectsWithTag("Section").Length;
@@ -112,6 +124,65 @@ public class Mapa : MonoBehaviour
 
         lastSelectedElement = seleccionado;
         seleccionado.SetActive(true);
+
+        // NUEVO: Generar los granos de café en la sección recién activada
+        SpawnCafe(seleccionado);
+        PowerUp(seleccionado);
+    }
+
+    private void SpawnCafe (GameObject seccionActiva)
+    {
+        // Buscamos todos los hijos que tengan un script o tag específico para spawn
+        // En este caso, buscaremos por un tag que pongas a los puntos vacíos: "SpawnCafe"
+        Transform[] puntos = seccionActiva.GetComponentsInChildren<Transform>();
+        List<Transform> validSpots = new List<Transform>();
+
+        foreach (Transform p in puntos)
+        {
+            if (p.CompareTag("SpawnCafe")) validSpots.Add(p);
+        }
+
+        foreach (Transform spot in validSpots)
+        {
+            // Limpiamos si ya había un café de una vuelta anterior
+            foreach (Transform child in spot) {
+                Destroy(child.gameObject);
+            }
+
+            // Decidimos si aparece café basado en probabilidad
+            if (Random.Range(0f, 100f) <= probabilidadSpawn)
+            {
+                GameObject prefabAElegir = (Random.Range(0f, 100f) <= probabilidadMalo) 
+                                        ? cafeMaloPrefab 
+                                        : cafeBuenoPrefab;
+
+                
+                // Instanciamos como hijo del punto de spawn para que se mueva con el mapa
+                Instantiate(prefabAElegir, spot.position, Quaternion.identity, spot);
+            }
+        }
+
+    }
+
+    private void PowerUp(GameObject seccionActiva)
+    {
+        Transform[] puntos = seccionActiva.GetComponentsInChildren<Transform>();
+        foreach (Transform spot in puntos)
+        {
+            // Usa un Tag distinto, por ejemplo "SpawnEspecial"
+            if (spot.CompareTag("PowerUps"))
+            {
+                foreach (Transform child in spot) Destroy(child.gameObject);
+
+                if (Random.Range(0f, 100f) <= probabilidadSpawnEspecial)
+                {
+                    if (objetoEspecialPrefab != null)
+                    { 
+                        Instantiate(objetoEspecialPrefab, spot.position, Quaternion.identity, spot);
+                    }
+                }
+            }
+        }
     }
 
 }

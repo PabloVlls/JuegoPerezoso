@@ -7,6 +7,9 @@ TagManager:
   - Elementos
   - Section
   - Liana
+  - Muerte
+  - SpawnCafe
+  - PowerUps
   layers:
   - Default
   - TransparentFX
