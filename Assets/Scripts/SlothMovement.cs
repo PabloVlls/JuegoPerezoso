@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
-using System.Collections;
+using System;
 
 [RequireComponent(typeof(CharacterController))]
 public class SlothMovement : MonoBehaviour
@@ -29,9 +29,9 @@ public class SlothMovement : MonoBehaviour
     // ====== Grounding robusto ======
     [Header("Grounding / Snap")]
     [SerializeField] LayerMask groundLayers = ~0;
-    [SerializeField] float groundCheckRadius = 0.22f; // ≈ cc.radius * 0.9f
-    [SerializeField] float groundCheckOffset = 0.20f; // profundidad de sondeo
-    [SerializeField] float maxGroundSnap = 0.30f;     // cuánto puede “pegarse”
+    [SerializeField] float groundCheckRadius = 0.22f;
+    [SerializeField] float groundCheckOffset = 0.20f;
+    [SerializeField] float maxGroundSnap = 0.30f;
     [SerializeField] float coyoteTime = 0.12f;
     float lastGroundedTime;
     bool isGrounded;
@@ -40,9 +40,23 @@ public class SlothMovement : MonoBehaviour
     float _lastCastOriginY;
     float _lastHitDistance;
 
+    // ====== Eventos para Combo System ======
+    /// <summary>Se dispara cada vez que el jugador salta.</summary>
+    public event Action OnJump;
+
+    /// <summary>Se dispara cuando el jugador aterriza (aire → suelo).</summary>
+    public event Action OnLand;
+
+    /// <summary>Se dispara cuando se ejecuta un super jump.</summary>
+    public event Action OnSuperJump;
+
+    // ====== Super Jump (combo) ======
+    [NonSerialized] public float jumpMultiplier = 1f;
+
     // ====== Internos ======
     CharacterController cc;
     float yVelocity;
+    bool _wasGroundedLastFrame = false;
 
     [Header("Liana")]
     public float velocityUp = 2f;
@@ -72,10 +86,7 @@ public class SlothMovement : MonoBehaviour
     {
         cc = GetComponent<CharacterController>();
         Application.targetFrameRate = 60;
-        // Evita que ignore micro-movimientos (crítico para el snap)
         cc.minMoveDistance = 0f;
-
-        // Guardar valor base para restaurar tras boosts
         laneChangeSpeedBase = laneChangeSpeed;
     }
 
@@ -89,12 +100,20 @@ public class SlothMovement : MonoBehaviour
         if (isGrounded)
         {
             lastGroundedTime = Time.time;
-            SnapToGroundIfClose(gHit); // elimina jitter/offset en Y
+            SnapToGroundIfClose(gHit);
         }
+
+        // --- Detectar aterrizaje (aire → suelo) ---
+        bool groundedNow = isGrounded || cc.isGrounded;
+        if (groundedNow && !_wasGroundedLastFrame)
+        {
+            OnLand?.Invoke();
+        }
+        _wasGroundedLastFrame = groundedNow;
 
         // --- Gravedad/salto/caída ---
         if (isGrounded && yVelocity < 0f)
-            yVelocity = -2f; // mantener pegado al suelo sin acumular caída
+            yVelocity = -2f;
 
         yVelocity += gravity * Time.deltaTime;
         yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
@@ -218,7 +237,6 @@ public class SlothMovement : MonoBehaviour
 
     // ====== Suelo / Snap ======
 
-    // Calcula correctamente la posición de los “pies” del CharacterController
     Vector3 GetFeetWorld()
     {
         Vector3 centerWorld = transform.position + cc.center;
@@ -245,36 +263,30 @@ public class SlothMovement : MonoBehaviour
             QueryTriggerInteraction.Ignore
         );
 
-        // Guarda datos para SnapToGroundIfClose
         if (ok)
         {
-            _lastProbeRadius  = probeRadius;
-            _lastCastOriginY  = origin.y;
-            _lastHitDistance  = hit.distance;
+            _lastProbeRadius = probeRadius;
+            _lastCastOriginY = origin.y;
+            _lastHitDistance = hit.distance;
         }
 
-        // Fallback: si el CC reporta grounded, úsalo también
         ok = ok || cc.isGrounded;
         return ok;
     }
 
     void SnapToGroundIfClose(RaycastHit hit)
     {
-        // Recalcula pies en mundo
         Vector3 centerWorld = transform.position + cc.center;
         float baseOffset = (cc.height * 0.5f) - cc.radius;
         Vector3 feet = centerWorld + Vector3.down * (baseOffset - 0.005f);
 
-        // Altura real del suelo en base al SphereCast:
-        // groundY = (origen del cast) - (distancia del hit) - (radio de la esfera)
         float groundY = (_lastCastOriginY - _lastHitDistance) - _lastProbeRadius;
-
-        float dist = feet.y - groundY; // cuánto “flotamos” realmente
+        float dist = feet.y - groundY;
 
         if (dist > 0f && dist <= maxGroundSnap)
         {
             cc.Move(Vector3.down * dist);
-            if (yVelocity < 0f) yVelocity = -2f; // pegado al piso
+            if (yVelocity < 0f) yVelocity = -2f;
         }
     }
 
@@ -283,20 +295,28 @@ public class SlothMovement : MonoBehaviour
     {
         bool canJump = cc.isGrounded || (Time.time - lastGroundedTime <= coyoteTime);
         if (canJump)
-            yVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        {
+            // Aplicar multiplicador de combo (1.0 = normal, >1.0 = super jump)
+            yVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity) * jumpMultiplier;
+
+            bool wasSuperJump = jumpMultiplier > 1f;
+            jumpMultiplier = 1f; // resetear después de usar
+
+            OnJump?.Invoke();
+            if (wasSuperJump)
+            {
+                OnSuperJump?.Invoke();
+            }
+        }
     }
 
     void QuickDrop()
     {
-        // Corta salto y acelera caída para enganchar la plataforma inferior
         if (yVelocity > 0f) yVelocity = 0f;
         yVelocity -= dropBoost;
     }
 
     // ====== Boost de cambio de carril (API pública) ======
-    /// <summary>
-    /// Aplica un boost temporal al cambio de carril (factor > 1 acelera).
-    /// </summary>
     public void ApplyLaneBoost(float factor, float duration)
     {
         if (laneBoostCo != null) StopCoroutine(laneBoostCo);
