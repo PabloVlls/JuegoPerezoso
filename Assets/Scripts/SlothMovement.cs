@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 using System;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
 public class SlothMovement : MonoBehaviour
