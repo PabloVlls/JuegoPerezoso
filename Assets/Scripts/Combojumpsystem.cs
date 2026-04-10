@@ -7,7 +7,7 @@ using System;
 /// Si el jugador salta 3 veces consecutivas (aterrizando y saltando
 /// dentro de la ventana de tiempo), el 3er salto se convierte en Super Jump.
 /// 
-/// Setup: Colócalo en el mismo GameObject que SlothMovement (el Player).
+///
 /// </summary>
 [RequireComponent(typeof(SlothMovement))]
 public class ComboJumpSystem : MonoBehaviour
@@ -81,7 +81,7 @@ public class ComboJumpSystem : MonoBehaviour
         }
     }
 
-    void HandleLand()
+    void HandleLand(Collider groundCollider)
     {
         // Al aterrizar, empezamos a contar el tiempo para el próximo salto
         lastLandTime = Time.time;

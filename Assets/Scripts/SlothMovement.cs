@@ -44,14 +44,20 @@ public class SlothMovement : MonoBehaviour
     /// <summary>Se dispara cada vez que el jugador salta.</summary>
     public event Action OnJump;
 
-    /// <summary>Se dispara cuando el jugador aterriza (aire → suelo).</summary>
-    public event Action OnLand;
+    /// <summary>Se dispara cuando el jugador aterriza (aire → suelo). Pasa el Collider de la plataforma (puede ser null).</summary>
+    public event Action<Collider> OnLand;
 
     /// <summary>Se dispara cuando se ejecuta un super jump.</summary>
     public event Action OnSuperJump;
 
+    /// <summary>Se dispara cuando el jugador hace QuickDrop (swipe abajo en el aire).</summary>
+    public event Action OnQuickDrop;
+
     // ====== Super Jump (combo) ======
     [NonSerialized] public float jumpMultiplier = 1f;
+
+    /// <summary>Velocidad base del salto (sin multiplicadores). Útil para sistemas externos.</summary>
+    public float BaseJumpVelocity => Mathf.Sqrt(jumpHeight * -2f * gravity);
 
     // ====== Internos ======
     CharacterController cc;
@@ -100,7 +106,7 @@ public class SlothMovement : MonoBehaviour
         bool groundedNow = isGrounded || cc.isGrounded;
         if (groundedNow && !_wasGroundedLastFrame)
         {
-            OnLand?.Invoke();
+            OnLand?.Invoke(gHit.collider); // pasa el collider de la plataforma
         }
         _wasGroundedLastFrame = groundedNow;
 
@@ -247,6 +253,15 @@ public class SlothMovement : MonoBehaviour
     {
         if (yVelocity > 0f) yVelocity = 0f;
         yVelocity -= dropBoost;
+        OnQuickDrop?.Invoke();
+    }
+
+    /// <summary>
+    /// Aplica una velocidad vertical directa (usado por BounceComboSystem para el rebote).
+    /// </summary>
+    public void ApplyBounce(float bounceVelocity)
+    {
+        yVelocity = bounceVelocity;
     }
 
     // ====== Boost de cambio de carril (API pública) ======
