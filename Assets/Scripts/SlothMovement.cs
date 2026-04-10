@@ -64,6 +64,13 @@ public class SlothMovement : MonoBehaviour
     float yVelocity;
     bool _wasGroundedLastFrame = false;
 
+    [Header("Liana")]
+    public float velocityUp = 2f;
+    private bool insideTrigger = false;
+
+    [Header("Vida")]
+    public int vidaMax = 3;
+
     // ====== Boost de carril (encapsulado) ======
     float laneChangeSpeedBase;
     Coroutine laneBoostCo;
@@ -122,9 +129,69 @@ public class SlothMovement : MonoBehaviour
         float newX = Mathf.MoveTowards(transform.position.x, targetX, laneChangeSpeed * Time.deltaTime);
         float deltaX = newX - transform.position.x;
 
+        // Gravedad y salto (sin auto-movimiento vertical)
+        if (cc.isGrounded && yVelocity < 0f) yVelocity = -2f;
+        yVelocity += gravity * Time.deltaTime;
+        yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
+        float deltaY = yVelocity * Time.deltaTime;
+
+        cc.Move(new Vector3(deltaX, deltaY, 0f));
+
+        //Lianas
+        if (insideTrigger)
+        {
+            Vector3 movement = Vector3.up * velocityUp * Time.deltaTime;
+            cc.Move(movement);
+        }
+
+        //Muerte personaje
+        if (vidaMax == 0)
+        {
+            Destroy(this.gameObject);
+            Time.timeScale = 0f;
+        }
+
         // --- Aplicar movimiento (CharacterController.Move recibe DELTAS) ---
-        Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
-        cc.Move(motion);
+        /*Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
+        cc.Move(motion);*/
+    }
+
+    //------ Vida del jugador / Lianas ------
+
+    private void OnTriggerEnter(Collider other)
+    {
+        //Interacción con lianas
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = true;
+            gravity = 0f;
+        }
+
+        //Interacción con semillas malas
+        if (other.CompareTag("Muerte"))
+        {
+            vidaMax --;
+            Destroy(other.gameObject);
+            StartCoroutine(Ralentizar());
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        //Interacción con lianas
+        if (other.CompareTag("Liana"))
+        {
+            insideTrigger = false;
+            gravity = -30f;
+            Debug.Log("salí");
+        }    
+    }
+
+    IEnumerator Ralentizar()
+    {
+        laneChangeSpeed = laneChangeSpeed / 3f;
+        yield return new WaitForSeconds(5f);
+        laneChangeSpeed = laneChangeSpeed * 3f;
     }
 
     // ====== Input / Gestos ======
