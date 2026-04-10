@@ -2865,6 +2865,8 @@ MonoBehaviour:
   groundCheckOffset: 0.25
   maxGroundSnap: 0.4
   coyoteTime: 0.1
+  velocityUp: 2
+  vidaMax: 3
 --- !u!114 &1960912080
 MonoBehaviour:
   m_ObjectHideFlags: 0
