@@ -256,7 +256,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64d0bdbc03589c04eb9a4016acb24e0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseRadius: 1.16
+  baseRadius: 8
   pullSpeed: 6
   targetMask:
     serializedVersion: 2
@@ -347,12 +347,20 @@ PrefabInstance:
       value: FruitMagnet
       objectReference: {fileID: 0}
     - target: {fileID: 4131310364841607541, guid: b61d119f5d3e39940b3d3857409dd1c5, type: 3}
+      propertyPath: m_Layer
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 4131310364841607541, guid: b61d119f5d3e39940b3d3857409dd1c5, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6639412292974237687, guid: b61d119f5d3e39940b3d3857409dd1c5, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7710785492913099340, guid: b61d119f5d3e39940b3d3857409dd1c5, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.791
+      value: 0.68
       objectReference: {fileID: 0}
     - target: {fileID: 7710785492913099340, guid: b61d119f5d3e39940b3d3857409dd1c5, type: 3}
       propertyPath: m_LocalPosition.y
@@ -458,6 +466,10 @@ PrefabInstance:
     - target: {fileID: 3410846540378753824, guid: 33526e46b01ec2d44996de778f2e7ed2, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4792726376090839596, guid: 33526e46b01ec2d44996de778f2e7ed2, type: 3}
+      propertyPath: attractionPoint
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6506324352345564303, guid: 33526e46b01ec2d44996de778f2e7ed2, type: 3}
       propertyPath: m_LocalPosition.x
@@ -751,7 +763,7 @@ Transform:
   m_GameObject: {fileID: 1419798633}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.44, z: -4.07}
+  m_LocalPosition: {x: 0, y: 1.17, z: -4.07}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

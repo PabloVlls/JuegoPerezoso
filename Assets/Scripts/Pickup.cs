@@ -1,33 +1,41 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// Pickup genérico. Al tocarlo el Player, ejecuta acciones y se destruye/desactiva.
+/// </summary>
 public class Pickup : MonoBehaviour
 {
-    [Header("Opcional")]
-    [Tooltip("Identificador simple por si luego quieres contar/guardar en inventario.")]
+    [Header("Datos")]
+    [Tooltip("Identificador del item (para inventario/score).")]
     public string itemId = "coin";
     public int amount = 1;
 
+    [Header("Eventos")]
     [Tooltip("Acciones a ejecutar al recoger (sonido, partículas, sumar score, etc.).")]
     public UnityEvent onCollected;
 
-    [Tooltip("Si está activo, destruye el objeto; si no, lo desactiva (útil para pooling).")]
+    [Tooltip("Si es true, destruye el objeto; si es false, lo desactiva (pooling).")]
     public bool destroyOnCollect = true;
 
-    private void OnTriggerEnter(Collider other)
+    bool _collected = false;
+
+    void OnTriggerEnter(Collider other)
     {
+        if (_collected) return;
         if (!other.CompareTag("Player")) return;
 
-        // Ejecuta acciones (sonido, VFX, sumar puntos, etc.)
         onCollected?.Invoke();
-        Debug.Log(amount);
+        _collected = true;
 
-        // Elimina o desactiva el pickup
         if (destroyOnCollect)
             Destroy(gameObject);
         else
             gameObject.SetActive(false);
+    }
+
+    void OnEnable()
+    {
+        _collected = false;
     }
 }

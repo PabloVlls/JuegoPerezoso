@@ -16,9 +16,20 @@ public class SlothMovement : MonoBehaviour
 
     // ====== Carriles ======
     [Header("Carriles (−1, 0, +1)")]
-    [SerializeField] float laneWidth = 1.6f;      // separación entre carriles
-    [SerializeField] private float laneChangeSpeed = 10f; // m/s para deslizar lateral
-    int lane = 0;                                  // -1, 0, +1
+    [SerializeField] float laneWidth = 1.6f;          // separación entre carriles
+    [SerializeField] float laneChangeDuration = 0.12f; // segundos para completar un cambio (0.10–0.15 = Subway Surfers)
+    int lane = 0;                                      // -1, 0, +1
+
+    // Estado del cambio de carril
+    bool _isChangingLane = false;
+    float _laneFromX;           // posición X de inicio
+    float _laneToX;             // posición X de destino
+    float _laneChangeT;        // progreso 0→1
+    float _laneChangeDur;      // duración actual (puede variar por boost)
+
+    // Input queueing: permite encolar UN cambio mientras estás en movimiento
+    bool _hasPendingLane = false;
+    int _pendingLane;
 
     // ====== Gestos ======
     [Header("Gestos (Input System - EnhancedTouch)")]
@@ -44,29 +55,28 @@ public class SlothMovement : MonoBehaviour
     /// <summary>Se dispara cada vez que el jugador salta.</summary>
     public event Action OnJump;
 
-    /// <summary>Se dispara cuando el jugador aterriza (aire → suelo).</summary>
-    public event Action OnLand;
+    /// <summary>Se dispara cuando el jugador aterriza (aire → suelo). Pasa el Collider de la plataforma (puede ser null).</summary>
+    public event Action<Collider> OnLand;
 
     /// <summary>Se dispara cuando se ejecuta un super jump.</summary>
     public event Action OnSuperJump;
 
+    /// <summary>Se dispara cuando el jugador hace QuickDrop (swipe abajo en el aire).</summary>
+    public event Action OnQuickDrop;
+
     // ====== Super Jump (combo) ======
     [NonSerialized] public float jumpMultiplier = 1f;
+
+    /// <summary>Velocidad base del salto (sin multiplicadores). Útil para sistemas externos.</summary>
+    public float BaseJumpVelocity => Mathf.Sqrt(jumpHeight * -2f * gravity);
 
     // ====== Internos ======
     CharacterController cc;
     float yVelocity;
     bool _wasGroundedLastFrame = false;
 
-    [Header("Liana")]
-    public float velocityUp = 2f;
-    private bool insideTrigger = false;
-
-    [Header("Vida")]
-    public int vidaMax = 3;
-
     // ====== Boost de carril (encapsulado) ======
-    float laneChangeSpeedBase;
+    float _laneBoostFactor = 1f;
     Coroutine laneBoostCo;
 
     // ====== Ciclo de vida ======
@@ -87,7 +97,6 @@ public class SlothMovement : MonoBehaviour
         cc = GetComponent<CharacterController>();
         Application.targetFrameRate = 60;
         cc.minMoveDistance = 0f;
-        laneChangeSpeedBase = laneChangeSpeed;
     }
 
     void Update()
@@ -100,14 +109,16 @@ public class SlothMovement : MonoBehaviour
         if (isGrounded)
         {
             lastGroundedTime = Time.time;
-            SnapToGroundIfClose(gHit);
+            // Solo hacer snap si NO estamos saltando hacia arriba
+            if (yVelocity <= 0f)
+                SnapToGroundIfClose(gHit);
         }
 
         // --- Detectar aterrizaje (aire → suelo) ---
         bool groundedNow = isGrounded || cc.isGrounded;
         if (groundedNow && !_wasGroundedLastFrame)
         {
-            OnLand?.Invoke();
+            OnLand?.Invoke(gHit.collider); // pasa el collider de la plataforma
         }
         _wasGroundedLastFrame = groundedNow;
 
@@ -118,74 +129,51 @@ public class SlothMovement : MonoBehaviour
         yVelocity += gravity * Time.deltaTime;
         yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
 
-        // --- Movimiento lateral hacia carril objetivo ---
-        float targetX = lane * laneWidth;
-        float newX = Mathf.MoveTowards(transform.position.x, targetX, laneChangeSpeed * Time.deltaTime);
-        float deltaX = newX - transform.position.x;
-
-        // Gravedad y salto (sin auto-movimiento vertical)
-        if (cc.isGrounded && yVelocity < 0f) yVelocity = -2f;
-        yVelocity += gravity * Time.deltaTime;
-        yVelocity = Mathf.Max(yVelocity, maxFallSpeed);
-        float deltaY = yVelocity * Time.deltaTime;
-
-        cc.Move(new Vector3(deltaX, deltaY, 0f));
-
-        //Lianas
-        if (insideTrigger)
+        // --- Movimiento lateral (ease-out, estilo Subway Surfers) ---
+        float deltaX = 0f;
+        if (_isChangingLane)
         {
-            Vector3 movement = Vector3.up * velocityUp * Time.deltaTime;
-            cc.Move(movement);
+            _laneChangeT += Time.deltaTime / _laneChangeDur;
+
+            if (_laneChangeT >= 1f)
+            {
+                // Llegamos al carril destino
+                _laneChangeT = 1f;
+                _isChangingLane = false;
+
+                // Snap exacto al carril
+                float finalX = _laneToX;
+                deltaX = finalX - transform.position.x;
+
+                // ¿Hay un cambio pendiente?
+                if (_hasPendingLane)
+                {
+                    _hasPendingLane = false;
+                    int newLane = Mathf.Clamp(_pendingLane, -1, +1);
+                    if (newLane != lane)
+                    {
+                        StartLaneChange(newLane);
+                    }
+                }
+            }
+            else
+            {
+                // Interpolación con ease-out cúbico: rápido al inicio, suave al final
+                float eased = EaseOutCubic(_laneChangeT);
+                float targetX = Mathf.Lerp(_laneFromX, _laneToX, eased);
+                deltaX = targetX - transform.position.x;
+            }
         }
-
-        //Muerte personaje
-        if (vidaMax == 0)
+        else
         {
-            Destroy(this.gameObject);
-            Time.timeScale = 0f;
+            // No corregir automáticamente: el jugador solo se mueve
+            // entre carriles cuando hace swipe explícito
+            deltaX = 0f;
         }
 
         // --- Aplicar movimiento (CharacterController.Move recibe DELTAS) ---
-        /*Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
-        cc.Move(motion);*/
-    }
-
-    //------ Vida del jugador / Lianas ------
-
-    private void OnTriggerEnter(Collider other)
-    {
-        //Interacción con lianas
-        if (other.CompareTag("Liana"))
-        {
-            insideTrigger = true;
-            gravity = 0f;
-        }
-
-        //Interacción con semillas malas
-        if (other.CompareTag("Muerte"))
-        {
-            vidaMax --;
-            Destroy(other.gameObject);
-            StartCoroutine(Ralentizar());
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        //Interacción con lianas
-        if (other.CompareTag("Liana"))
-        {
-            insideTrigger = false;
-            gravity = -30f;
-            Debug.Log("salí");
-        }    
-    }
-
-    IEnumerator Ralentizar()
-    {
-        laneChangeSpeed = laneChangeSpeed / 3f;
-        yield return new WaitForSeconds(5f);
-        laneChangeSpeed = laneChangeSpeed * 3f;
+        Vector3 motion = new Vector3(deltaX, yVelocity * Time.deltaTime, 0f);
+        cc.Move(motion);
     }
 
     // ====== Input / Gestos ======
@@ -209,7 +197,8 @@ public class SlothMovement : MonoBehaviour
                         if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
                         {
                             // Izquierda / Derecha
-                            lane = Mathf.Clamp(lane + (delta.x > 0 ? +1 : -1), -1, +1);
+                            int dir = delta.x > 0 ? +1 : -1;
+                            RequestLaneChange(dir);
                         }
                         else
                         {
@@ -227,8 +216,8 @@ public class SlothMovement : MonoBehaviour
         // Controles de prueba en Editor
         if (Keyboard.current != null)
         {
-            if (Keyboard.current.aKey.wasPressedThisFrame) lane = Mathf.Clamp(lane - 1, -1, +1);
-            if (Keyboard.current.dKey.wasPressedThisFrame) lane = Mathf.Clamp(lane + 1, -1, +1);
+            if (Keyboard.current.aKey.wasPressedThisFrame) RequestLaneChange(-1);
+            if (Keyboard.current.dKey.wasPressedThisFrame) RequestLaneChange(+1);
             if (Keyboard.current.spaceKey.wasPressedThisFrame) TryJump();
             if (Keyboard.current.sKey.wasPressedThisFrame) QuickDrop();
         }
@@ -296,11 +285,10 @@ public class SlothMovement : MonoBehaviour
         bool canJump = cc.isGrounded || (Time.time - lastGroundedTime <= coyoteTime);
         if (canJump)
         {
-            // Aplicar multiplicador de combo (1.0 = normal, >1.0 = super jump)
             yVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity) * jumpMultiplier;
 
             bool wasSuperJump = jumpMultiplier > 1f;
-            jumpMultiplier = 1f; // resetear después de usar
+            jumpMultiplier = 1f;
 
             OnJump?.Invoke();
             if (wasSuperJump)
@@ -310,13 +298,70 @@ public class SlothMovement : MonoBehaviour
         }
     }
 
+    // ====== Cambio de carril (estilo Subway Surfers) ======
+
+    /// <summary>Solicita un cambio de carril. Si ya estamos cambiando, lo encola.</summary>
+    void RequestLaneChange(int dir)
+    {
+        int targetLane = Mathf.Clamp(lane + dir, -1, +1);
+
+        // Si no cambió (ya estamos en el borde), ignorar
+        if (targetLane == lane && !_isChangingLane) return;
+
+        if (_isChangingLane)
+        {
+            // Encolar: solo guardamos el carril final deseado
+            int pendingTarget = Mathf.Clamp(lane + dir, -1, +1);
+            if (pendingTarget != lane)
+            {
+                _hasPendingLane = true;
+                _pendingLane = pendingTarget;
+            }
+        }
+        else
+        {
+            StartLaneChange(targetLane);
+        }
+    }
+
+    /// <summary>Inicia un cambio de carril con animación ease-out.</summary>
+    void StartLaneChange(int targetLane)
+    {
+        _laneFromX = transform.position.x;
+        _laneToX = targetLane * laneWidth;
+        _laneChangeT = 0f;
+        _laneChangeDur = laneChangeDuration / Mathf.Max(0.1f, _laneBoostFactor);
+        _isChangingLane = true;
+        lane = targetLane;
+    }
+
+    /// <summary>Curva ease-out cúbica: arranque rápido, frenado suave.</summary>
+    static float EaseOutCubic(float t)
+    {
+        t = 1f - t;
+        return 1f - (t * t * t);
+    }
+
     void QuickDrop()
     {
         if (yVelocity > 0f) yVelocity = 0f;
         yVelocity -= dropBoost;
+        OnQuickDrop?.Invoke();
+    }
+
+    /// <summary>
+    /// Aplica una velocidad vertical directa (usado por BounceComboSystem para el rebote).
+    /// </summary>
+    public void ApplyBounce(float bounceVelocity)
+    {
+        yVelocity = bounceVelocity;
     }
 
     // ====== Boost de cambio de carril (API pública) ======
+    /// <summary>
+    /// Aplica un boost temporal al cambio de carril.
+    /// factor > 1 = más rápido, factor < 1 = más lento.
+    /// </summary>
     public void ApplyLaneBoost(float factor, float duration)
     {
         if (laneBoostCo != null) StopCoroutine(laneBoostCo);
@@ -325,9 +370,9 @@ public class SlothMovement : MonoBehaviour
 
     private System.Collections.IEnumerator LaneBoostRoutine(float factor, float duration)
     {
-        laneChangeSpeed = laneChangeSpeedBase * Mathf.Max(0.01f, factor);
+        _laneBoostFactor = Mathf.Max(0.1f, factor);
         yield return new WaitForSeconds(duration);
-        laneChangeSpeed = laneChangeSpeedBase;
+        _laneBoostFactor = 1f;
         laneBoostCo = null;
     }
 

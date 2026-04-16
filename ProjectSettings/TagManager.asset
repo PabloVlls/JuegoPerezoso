@@ -4,12 +4,7 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Elementos
-  - Section
-  - Liana
-  - Muerte
-  - SpawnCafe
-  - PowerUps
+  - BouncePlatform
   layers:
   - Default
   - TransparentFX

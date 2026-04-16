@@ -1,73 +1,70 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-
+/// <summary>
+/// Imán de frutas/coleccionables. Atrae objetos con MagnetTarget dentro del radio.
+///
+/// Setup:
+/// 1. Colócalo en el Player (o como hijo).
+/// 2. Crea un Layer llamado "Collectible" y asígnalo a tus frutas/items.
+/// 3. En el Inspector, setea targetMask = "Collectible" solamente.
+/// 4. El imán empieza desactivado; se activa al recoger un FruitMagnetPickup.
+/// </summary>
 public class FruitMagnet : MonoBehaviour
 {
-    [Header("Básicos")]
-    [SerializeField] private float baseRadius = 8f;
-    [SerializeField] private float pullSpeed = 16f;          // m/s hacia el jugador
-    [SerializeField] private LayerMask targetMask = ~0;       // marca aquí "Collectible"
-    [SerializeField] private int nonAllocSize = 128;
+    [Header("Configuración")]
+    [SerializeField] float baseRadius = 8f;
+    [SerializeField] float pullSpeed = 16f;
+    [Tooltip("IMPORTANTE: Asigna SOLO el layer de coleccionables, no 'Everything'")]
+    [SerializeField] LayerMask targetMask;
+    [SerializeField] int nonAllocSize = 64;
 
     [Header("Suavizado")]
-    [Range(0f, 1f)] public float proximityBoost = 0.6f;      // más tirón cerca del jugador
-    [SerializeField] private float stopDistance = 0.02f;      // evita jitter al llegar
+    [Range(0f, 1f)]
+    [SerializeField] float proximityBoost = 0.6f;
+    [SerializeField] float stopDistance = 0.02f;
 
     [Header("VFX (opcional)")]
-    public GameObject magnetVfx;
+    [SerializeField] GameObject magnetVfx;
 
-    // runtime
-    private Collider[] _hits;
-    private float _expireTime = -1f;
-    private float _activeRadius;
+    // Runtime
+    Collider[] _hits;
+    float _expireTime = -1f;
+    float _activeRadius;
+
+    /// <summary>True si el imán está activo.</summary>
     public bool IsActive => Time.time < _expireTime;
 
     void Awake()
     {
         _hits = new Collider[nonAllocSize];
-        if (magnetVfx) magnetVfx.SetActive(false);
+        SetVfx(false);
         enabled = false; // solo corre Update cuando esté activo
     }
-    
-    void Start()
-    {
-        // SOLO PARA PRUEBA: imán encendido 60s sin pickup
-        Activate(60f, 0f);
-    }
 
-    /// <summary>Activa/renueva el imán por 'duration' segundos. extraRadius suma al radio base.</summary>
+    /// <summary>Activa o renueva el imán por 'duration' segundos.</summary>
     public void Activate(float duration, float extraRadius = 0f)
     {
         _activeRadius = baseRadius + Mathf.Max(0f, extraRadius);
         float end = Time.time + Mathf.Max(0.01f, duration);
-        _expireTime = Mathf.Max(_expireTime, end);
+        _expireTime = Mathf.Max(_expireTime, end); // permite renovar sin acortar
 
-        if (magnetVfx) magnetVfx.SetActive(true);
+        SetVfx(true);
         enabled = true;
-
-        // Debug opcional
-        // Debug.Log($"[FruitMagnet] ON por {duration:F1}s. Radio={_activeRadius:F1}");
     }
 
     void Update()
     {
-        if (!IsActive) return;
+        // Verificar expiración
+        if (!IsActive)
+        {
+            Deactivate();
+            return;
+        }
 
-        int count = Physics.OverlapSphereNonAlloc(
-            transform.position, _activeRadius, _hits, targetMask, QueryTriggerInteraction.Collide
-        );
-        // Log mínimo (comentarlo luego)
-        if (count == 0)
-            Debug.Log("[FruitMagnet] 0 objetivos en radio");
-        else
-            Debug.Log($"[FruitMagnet] Detectados: {count}");
-    
-        ScanAndPull(Time.deltaTime);
+        PullTargets(Time.deltaTime);
     }
 
-    private void ScanAndPull(float dt)
+    void PullTargets(float dt)
     {
         Vector3 origin = transform.position;
 
@@ -78,36 +75,51 @@ public class FruitMagnet : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             var col = _hits[i];
-            if (!col || !col.gameObject.activeInHierarchy) continue;
+            if (col == null || !col.gameObject.activeInHierarchy) continue;
 
-            var target = col.GetComponent<MagnetTarget>() ?? col.GetComponentInParent<MagnetTarget>();
+            // Buscar MagnetTarget en el objeto o su padre
+            var target = col.GetComponent<MagnetTarget>();
+            if (target == null) target = col.GetComponentInParent<MagnetTarget>();
             if (target == null || !target.eligible) continue;
 
+            // Desparentar del Section/spawner para que el pull no sea
+            // cancelado por el movimiento del padre procedural
             Transform moveTf = target.transform;
-            Vector3 pos = target.GetWorldPosition();
+            if (moveTf.parent != null)
+            {
+                moveTf.SetParent(null);
+            }
 
+            Vector3 pos = target.GetWorldPosition();
             Vector3 toPlayer = origin - pos;
             float dist = toPlayer.magnitude;
+
             if (dist <= stopDistance) continue;
 
             Vector3 dir = toPlayer / dist;
+
+            // Más tirón cuanto más cerca del jugador
             float proximity = 1f + proximityBoost * Mathf.Clamp01(1f - (dist / _activeRadius));
             float step = pullSpeed * proximity * dt;
 
+            // Mover con Rigidbody si existe, si no, directo al transform
             if (moveTf.TryGetComponent<Rigidbody>(out var rb) && rb != null)
                 rb.MovePosition(moveTf.position + dir * step);
             else
                 moveTf.position += dir * step;
         }
     }
-    
-    [ContextMenu("DEBUG: Listar MagnetTargets en escena")]
-    void Debug_ListTargets()
+
+    void Deactivate()
     {
-        var all = FindObjectsOfType<MagnetTarget>(true);
-        Debug.Log($"[FruitMagnet] MagnetTargets en escena: {all.Length}");
-        foreach (var m in all)
-            Debug.Log($"  - {m.name} (active={m.gameObject.activeInHierarchy})");
+        _expireTime = -1f;
+        SetVfx(false);
+        enabled = false;
+    }
+
+    void SetVfx(bool on)
+    {
+        if (magnetVfx != null) magnetVfx.SetActive(on);
     }
 
 #if UNITY_EDITOR

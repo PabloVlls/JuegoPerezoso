@@ -7,7 +7,7 @@ using System;
 /// Si el jugador salta 3 veces consecutivas (aterrizando y saltando
 /// dentro de la ventana de tiempo), el 3er salto se convierte en Super Jump.
 /// 
-/// Setup: Colócalo en el mismo GameObject que SlothMovement (el Player).
+///
 /// </summary>
 [RequireComponent(typeof(SlothMovement))]
 public class ComboJumpSystem : MonoBehaviour
@@ -21,6 +21,9 @@ public class ComboJumpSystem : MonoBehaviour
 
     [Tooltip("Multiplicador de altura del super jump (1.8 = 80% más alto)")]
     [SerializeField] float superJumpMultiplier = 1.8f;
+
+    [Tooltip("Segundos de espera después de completar un combo antes de poder iniciar otro")]
+    [SerializeField] float comboCooldown = 5f;
 
     // ===================== Eventos para UI/VFX/Audio =====================
     /// <summary>Se dispara cada vez que el combo avanza (comboCount actualizado).</summary>
@@ -37,6 +40,8 @@ public class ComboJumpSystem : MonoBehaviour
     int comboCount = 0;          // saltos encadenados actuales
     float lastLandTime = -999f;  // cuándo fue el último aterrizaje
     bool waitingForJump = false; // true después de aterrizar, esperando el siguiente salto
+    float _cooldownEndTime = -999f; // cuándo termina el cooldown
+    bool IsOnCooldown => Time.time < _cooldownEndTime;
 
     // ===================== Propiedades públicas (para UI) =====================
     /// <summary>Cantidad actual de saltos en el combo (0 a comboTarget).</summary>
@@ -54,6 +59,9 @@ public class ComboJumpSystem : MonoBehaviour
             return Mathf.Max(0f, comboWindow - (Time.time - lastLandTime));
         }
     }
+
+    /// <summary>Tiempo restante de cooldown antes de poder hacer otro combo (0 si está listo).</summary>
+    public float CooldownRemaining => Mathf.Max(0f, _cooldownEndTime - Time.time);
 
     void Awake()
     {
@@ -81,15 +89,25 @@ public class ComboJumpSystem : MonoBehaviour
         }
     }
 
-    void HandleLand()
+    void HandleLand(Collider groundCollider)
     {
-        // Al aterrizar, empezamos a contar el tiempo para el próximo salto
+        // No iniciar combo durante cooldown
+        if (IsOnCooldown) return;
+
         lastLandTime = Time.time;
         waitingForJump = true;
     }
 
     void HandleJump()
     {
+        // Si está en cooldown, no cuenta para combo
+        if (IsOnCooldown)
+        {
+            comboCount = 0;
+            waitingForJump = false;
+            return;
+        }
+
         // ¿Saltamos dentro de la ventana de combo?
         if (waitingForJump && (Time.time - lastLandTime) <= comboWindow)
         {
@@ -102,17 +120,13 @@ public class ComboJumpSystem : MonoBehaviour
             // ¿Llegamos al objetivo?
             if (comboCount >= comboTarget)
             {
-                // Preparar super jump: el multiplicador se aplica en SlothMovement
-                // NOTA: el salto actual YA se ejecutó con velocidad normal.
-                // El super jump se aplica al SIGUIENTE salto que se acaba de hacer.
-                // Para que funcione en el salto actual, seteamos el multiplicador
-                // ANTES de que SlothMovement calcule la velocidad.
-                // Como los eventos se disparan DESPUÉS del cálculo, necesitamos
-                // aplicar la velocidad extra directamente aquí.
                 ApplySuperJumpRetroactively();
 
                 OnComboComplete?.Invoke();
-                comboCount = 0; // resetear para el siguiente combo
+                comboCount = 0;
+
+                // Iniciar cooldown
+                _cooldownEndTime = Time.time + comboCooldown;
             }
         }
         else
