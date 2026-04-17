@@ -122,7 +122,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   duration: 6
-  radiusBonus: 4
+  radiusBonus: 1
   collectVFX: {fileID: 0}
   collectSFX: {fileID: 0}
   destroyOnCollect: 1
